@@ -128,20 +128,20 @@ export default function App(){
     setWinners([])
   }
 
-  function handleReset(){
-    if(!confirm('確定要重置嗎？將重新載入 participants.json 並清空抽獎紀錄。')) return
-    fetch('/data/participants.json?ts='+Date.now())
-      .then(r => r.json())
-      .then(arr => {
-        const list = Array.isArray(arr) ? arr : [];
-        setPool(list.length ? normalizeList(list) : normalizeList(DEFAULT_LIST));
-        setHistory([]);
-        setWinners([]);
-      })
-      .catch(()=>{
-        setPool(normalizeList(DEFAULT_LIST)); setHistory([]); setWinners([])
-      })
-  }
+  // function handleReset(){
+  //   if(!confirm('確定要重置嗎？將重新載入 participants.json 並清空抽獎紀錄。')) return
+  //   fetch('/data/participants.json?ts='+Date.now())
+  //     .then(r => r.json())
+  //     .then(arr => {
+  //       const list = Array.isArray(arr) ? arr : [];
+  //       setPool(list.length ? normalizeList(list) : normalizeList(DEFAULT_LIST));
+  //       setHistory([]);
+  //       setWinners([]);
+  //     })
+  //     .catch(()=>{
+  //       setPool(normalizeList(DEFAULT_LIST)); setHistory([]); setWinners([])
+  //     })
+  // }
 
   function handleExport(){
     if(history.length===0){ alert('尚無紀錄可匯出。'); return }
