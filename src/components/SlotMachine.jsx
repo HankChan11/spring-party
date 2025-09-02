@@ -3,12 +3,13 @@ import React, { useEffect, useRef, useState } from 'react'
 // 讓任何圖片路徑都能在 GitHub Pages 正確解析
 function withBase(p) {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
-  if (!p) return `${base}/img/default.png`;         // 預設頭像
-  if (/^https?:\/\//i.test(p)) return p;            // 完整網址，不動
-  if (p.startsWith(base)) return p;                 // 已包含 base，不動
-  if (p.startsWith("/")) return `${base}${p}`;      // 以 / 開頭：補上 base
-  if (/^img\//i.test(p)) return `${base}/${p}`;     // 以 img/ 開頭：補上 base
-  return `${base}/img/${p}`;                        // 純檔名：補 img/ 與 base
+  const def = `${base}/img/default.png`;
+  if (!p) return def;
+  if (/^https?:\/\//i.test(p)) return p;              // 完整網址
+  if (p.startsWith(base)) return p;                   // 已含 base
+  if (p.startsWith("/")) return `${base}${p}`;        // 以 / 開頭
+  if (/^img\//i.test(p)) return `${base}/${p}`;       // img/xxx
+  return `${base}/img/${p}`;                          // 純檔名
 }
 
 function createCell(person){

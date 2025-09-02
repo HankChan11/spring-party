@@ -9,6 +9,8 @@ const DEFAULT_LIST = ['WYAGL','Spider','Peter','Curry','Lin','Jeremy','Jimmy','F
 
 const DEFAULT_AVATAR = '/img/default.png';
 
+const DATA_URL = `${import.meta.env.BASE_URL}data/participants.json`;
+
 function toPerson(x) {
   if (typeof x === 'string') return { name: x, img: '' };
   return { name: String(x.name || ''), img: String(x.img || '') };
@@ -187,49 +189,129 @@ export default function App(){
     return ()=> window.removeEventListener('keydown', onKey)
   }, [handleLever, pool, winnersCount, prize, unique, spinning])
 
-  return (
-    <>
-      <header className="site-header">
-        <h1>2026 春酒抽獎</h1>
-        {/* <p className="subtitle">React + Hooks，支援一次抽 1–5 位、避免重複、匯入/匯出、抽獎紀錄</p> */}
-      </header>
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(DATA_URL, { cache: "no-store" });
+        const data = await res.json();
+        setParticipants(Array.isArray(data) ? data : []);
+      } catch {
+        setParticipants([]);
+      }
+    })();
+  }, []);
 
-      <main className="container">
-        <section className="controls card">
-          <Controls
-            winnersCount={winnersCount}
-            setWinnersCount={setWinnersCount}
-            prize={prize}
-            setPrize={setPrize}
-            unique={unique}
-            setUnique={setUnique}
-            onLever={handleLever}
-            onUndo={handleUndo}
-            canUndo={history.length>0}
-            onReset={handleReset}
-            onExport={handleExport}
-            onImport={handleImport}
-            spinning={spinning}
-          />
-        </section>
+  const cappedCount = useMemo(
+    () => Math.max(1, Math.min(5, Number(count) || 1)),
+    [count]
+  );
 
-        <section className="stage card">
+  const handleSpin = () => setSpinning(true);
+  const handleReset = () => {
+    setSpinning(false);
+    setWinners([]);
+  };
+
+  const handleResult = (drawn) => {
+    setSpinning(false);
+    setWinners(drawn);
+    setRecords((prev) => [
+      { time: new Date().toISOString(), winners: drawn },
+      ...prev,
+    ]);
+  };
+
+  // return (
+  //   <>
+  //     <header className="site-header">
+  //       <h1>2026 春酒抽獎</h1>
+  //       {/* <p className="subtitle">React + Hooks，支援一次抽 1–5 位、避免重複、匯入/匯出、抽獎紀錄</p> */}
+  //     </header>
+
+  //     <main className="container">
+  //       <section className="controls card">
+  //         <Controls
+  //           winnersCount={winnersCount}
+  //           setWinnersCount={setWinnersCount}
+  //           prize={prize}
+  //           setPrize={setPrize}
+  //           unique={unique}
+  //           setUnique={setUnique}
+  //           onLever={handleLever}
+  //           onUndo={handleUndo}
+  //           canUndo={history.length>0}
+  //           onReset={handleReset}
+  //           onExport={handleExport}
+  //           onImport={handleImport}
+  //           spinning={spinning}
+  //         />
+  //       </section>
+
+  //       <section className="stage card">
+  //         <SlotMachine
+  //           winners={winners}
+  //           pool={pool.length?pool:DEFAULT_LIST}
+  //           spinning={spinning}
+  //           onDone={handleSpinDone}
+  //         />
+  //       </section>
+
+  //       <section className="history card">
+  //         <History list={history} />
+  //       </section>
+  //     </main>
+
+  //     <footer className="site-footer">
+  //       {/* <p>資料保存在本機瀏覽器（localStorage）。</p> */}
+  //     </footer>
+  //   </>
+  // )
+
+return (
+    <div className="app">
+      <div className="header">
+        <div>
+          <div className="title">2026 春酒抽獎</div>
+          <div className="subtitle">GitHub Pages 版（支援圖片＋多名同抽）</div>
+        </div>
+      </div>
+
+      <div className="panel controls" style={{ marginBottom: 16 }}>
+        <Controls
+          count={cappedCount}
+          setCount={setCount}
+          spinning={spinning}
+          onStart={handleSpin}
+          onReset={handleReset}
+        />
+      </div>
+
+      <div className="grid">
+        <div className="panel slot">
           <SlotMachine
-            winners={winners}
-            pool={pool.length?pool:DEFAULT_LIST}
+            participants={participants}
+            count={cappedCount}
             spinning={spinning}
-            onDone={handleSpinDone}
+            onResult={handleResult}
           />
-        </section>
 
-        <section className="history card">
-          <History list={history} />
-        </section>
-      </main>
+          {winners.length > 0 && (
+            <div className="badges">
+              {winners.map((p, i) => (
+                <span className="badge" key={i}>
+                  <img className="badge-avatar" src={p._resolvedImg} alt={p.name} />
+                  <b>{p.name}</b>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
-      <footer className="site-footer">
-        {/* <p>資料保存在本機瀏覽器（localStorage）。</p> */}
-      </footer>
-    </>
-  )
+        <div className="panel">
+          <History records={records} onClear={() => setRecords([])} />
+        </div>
+      </div>
+    </div>
+  );
+
 }
