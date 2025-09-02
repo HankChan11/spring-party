@@ -1,3 +1,4 @@
+import React from "react";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Controls from './components/Controls.jsx'
 import SlotMachine from './components/SlotMachine.jsx'
