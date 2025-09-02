@@ -1,4 +1,6 @@
 ﻿import React from "react";
 import { createRoot } from "react-dom/client";
-import "./main.css";
-createRoot(document.getElementById("root")).render(<h1>2026 春酒抽獎</h1>);
+import App from "./App.jsx";
+import "./styles.css";      // ← 這行很關鍵
+
+createRoot(document.getElementById("root")).render(<App />);
