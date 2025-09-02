@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 // 讓任何圖片路徑都能在 GitHub Pages 正確解析
 function withBase(p) {

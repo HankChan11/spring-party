@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Controls from './components/Controls.jsx'
 import SlotMachine from './components/SlotMachine.jsx'
 import History from './components/History.jsx'
