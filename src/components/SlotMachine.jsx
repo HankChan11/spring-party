@@ -1,27 +1,64 @@
 import React, { useEffect, useRef, useState } from 'react'
 
-// 放在檔案開頭（import 之後），新增一個建立「圖片＋名字」的 cell
+// 讓任何圖片路徑都能在 GitHub Pages 正確解析
+function withBase(p) {
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+  if (!p) return `${base}/img/default.png`;         // 預設頭像
+  if (/^https?:\/\//i.test(p)) return p;            // 完整網址，不動
+  if (p.startsWith(base)) return p;                 // 已包含 base，不動
+  if (p.startsWith("/")) return `${base}${p}`;      // 以 / 開頭：補上 base
+  if (/^img\//i.test(p)) return `${base}/${p}`;     // 以 img/ 開頭：補上 base
+  return `${base}/img/${p}`;                        // 純檔名：補 img/ 與 base
+}
+
 function createCell(person){
   const cell = document.createElement('div');
-  cell.className = 'cell';                  // 這個 class 會在 CSS 設計樣式
+  cell.className = 'cell';
+
   const img = document.createElement('img');
-  img.src = person.img || '';
-  img.alt = person.name;
-  img.onerror = () => {                     // .jpg/.jpeg 互相嘗試；再退預設
-    const u = img.src;
+  img.src = withBase(person?.img);   // ★ 用 withBase
+  img.alt = person?.name || "";
+
+  // .jpg/.jpeg 互換，最後用預設
+  img.onerror = () => {
+    const u = img.src || "";
     if (/\.jpg(\?.*)?$/i.test(u))      img.src = u.replace(/\.jpg(\?.*)?$/i, '.jpeg$1');
     else if (/\.jpeg(\?.*)?$/i.test(u)) img.src = u.replace(/\.jpeg(\?.*)?$/i, '.jpg$1');
-    else                                img.src = '/img/default.png';
+    else                                 img.src = withBase('default.png');   // ★ 也用 withBase
     img.onerror = null;
   };
 
   const label = document.createElement('div');
   label.className = 'label';
-  label.textContent = person.name;
+  label.textContent = person?.name || "—";
 
   cell.append(img, label);
   return cell;
 }
+
+
+// 放在檔案開頭（import 之後），新增一個建立「圖片＋名字」的 cell
+// function createCell(person){
+//   const cell = document.createElement('div');
+//   cell.className = 'cell';                  // 這個 class 會在 CSS 設計樣式
+//   const img = document.createElement('img');
+//   img.src = person.img || '';
+//   img.alt = person.name;
+//   img.onerror = () => {                     // .jpg/.jpeg 互相嘗試；再退預設
+//     const u = img.src;
+//     if (/\.jpg(\?.*)?$/i.test(u))      img.src = u.replace(/\.jpg(\?.*)?$/i, '.jpeg$1');
+//     else if (/\.jpeg(\?.*)?$/i.test(u)) img.src = u.replace(/\.jpeg(\?.*)?$/i, '.jpg$1');
+//     else                                img.src = '/img/default.png';
+//     img.onerror = null;
+//   };
+
+//   const label = document.createElement('div');
+//   label.className = 'label';
+//   label.textContent = person.name;
+
+//   cell.append(img, label);
+//   return cell;
+// }
 
 // 用圖片卡片餵進每個轉輪
 function feedReel(reelEl, people, repeats = 12){
@@ -113,7 +150,7 @@ export default function SlotMachine({ winners, pool, spinning, onDone }){
       <div className="winners-area">
         {badges.map((p, idx) => (
           <span className="badge" key={idx}>
-            <img className="badge-avatar" src={p.img || ''} alt={p.name} />
+            <img className="badge-avatar" src={withBase(p.img)} alt={p.name} />
             {p.name}
           </span>
         ))}
