@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from 'react'
 
-/** 讓任何圖片在 GitHub Pages 子路徑都能正確解析 */
+// 讓任何圖片路徑都能在 GitHub Pages 正確解析
 function withBase(p) {
   const base = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
   const def = `${base}/img/default.png`;
@@ -12,110 +12,150 @@ function withBase(p) {
   return `${base}/img/${p}`;                          // 純檔名
 }
 
-/** 從陣列中隨機挑選 n 個不重複項目 */
-function pickN(arr, n) {
-  const pool = [...arr];
-  const res = [];
-  for (let i = 0; i < Math.min(n, pool.length); i++) {
-    const k = Math.floor(Math.random() * pool.length);
-    res.push(pool.splice(k, 1)[0]);
-  }
-  return res;
+function createCell(person){
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+
+  const img = document.createElement('img');
+  img.src = withBase(person?.img);   // ★ 用 withBase
+  img.alt = person?.name || "";
+
+  // .jpg/.jpeg 互換，最後用預設
+  img.onerror = () => {
+    const u = img.src || "";
+    if (/\.jpg(\?.*)?$/i.test(u))      img.src = u.replace(/\.jpg(\?.*)?$/i, '.jpeg$1');
+    else if (/\.jpeg(\?.*)?$/i.test(u)) img.src = u.replace(/\.jpeg(\?.*)?$/i, '.jpg$1');
+    else                                 img.src = withBase('default.png');   // ★ 也用 withBase
+    img.onerror = null;
+  };
+
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = person?.name || "—";
+
+  cell.append(img, label);
+  return cell;
 }
 
-/** 單一滾輪 */
-function Reel({ items, winnerIndex, spinKey, duration = 1200, cellH = 120 }) {
-  const trackRef = useRef(null);
-  const triple = useMemo(() => [...items, ...items, ...items], [items]);
 
-  useEffect(() => {
-    const el = trackRef.current;
-    if (!el || winnerIndex == null) return;
+// 放在檔案開頭（import 之後），新增一個建立「圖片＋名字」的 cell
+// function createCell(person){
+//   const cell = document.createElement('div');
+//   cell.className = 'cell';                  // 這個 class 會在 CSS 設計樣式
+//   const img = document.createElement('img');
+//   img.src = person.img || '';
+//   img.alt = person.name;
+//   img.onerror = () => {                     // .jpg/.jpeg 互相嘗試；再退預設
+//     const u = img.src;
+//     if (/\.jpg(\?.*)?$/i.test(u))      img.src = u.replace(/\.jpg(\?.*)?$/i, '.jpeg$1');
+//     else if (/\.jpeg(\?.*)?$/i.test(u)) img.src = u.replace(/\.jpeg(\?.*)?$/i, '.jpg$1');
+//     else                                img.src = '/img/default.png';
+//     img.onerror = null;
+//   };
 
-    // 先把位置重置到最上方（取消動效）
-    el.style.transition = "none";
-    el.style.transform = "translateY(0px)";
+//   const label = document.createElement('div');
+//   label.className = 'label';
+//   label.textContent = person.name;
 
-    // 下一幀再套用目標位移（啟用動效）
-    const id = requestAnimationFrame(() => {
-      const target = items.length + winnerIndex; // 落在中段
-      el.style.transition = `transform ${duration}ms cubic-bezier(.12,.7,.1,1)`;
-      el.style.transform = `translateY(${-target * cellH}px)`;
-    });
-    return () => cancelAnimationFrame(id);
-  }, [spinKey, winnerIndex, duration, items.length, cellH]);
+//   cell.append(img, label);
+//   return cell;
+// }
+
+// 用圖片卡片餵進每個轉輪
+function feedReel(reelEl, people, repeats = 12){
+  reelEl.innerHTML = '';
+  const src = (people && people.length) ? people : [];
+  for(let i=0;i<repeats;i++){
+    const p = src[Math.floor(Math.random()*src.length)] || { name:'—', img:'' };
+    reelEl.appendChild(createCell(p));
+  }
+}
+
+// 轉動到最終得獎者，也用圖片卡片停住
+// SlotMachine.jsx
+function spinReel(reelEl, finalPerson, durationMs = 1600){
+  return new Promise(resolve => {
+    // 每步高度先抓一個合理值，稍後用實測覆蓋
+    let stepH = 48;
+    const cells = reelEl.querySelectorAll('.cell');
+    if (cells.length > 1){
+      const r0 = cells[0].getBoundingClientRect();
+      const r1 = cells[1].getBoundingClientRect();
+      if (r0 && r1) stepH = Math.max(40, Math.floor(r1.top - r0.top));
+    }
+
+    let y = 0;
+    const t0 = performance.now();
+    const timer = setInterval(() => {
+      y += stepH;
+      reelEl.style.transform = `translateY(-${y}px)`;
+
+      if (performance.now() - t0 > durationMs){
+        clearInterval(timer);
+
+        // 放入最終得獎格
+        const endCell = createCell(finalPerson);
+        reelEl.appendChild(endCell);
+
+        // ★ 用 offset 計算讓 endCell 的中心 = slot 的中心
+        const slotH  = reelEl.parentElement.clientHeight;   // .slot 高度
+        const cellTop = endCell.offsetTop;                  // 在 reel 內的頂端位置（不受 transform 影響）
+        const cellH   = endCell.offsetHeight;
+        const targetY = Math.max(0, cellTop - (slotH - cellH)/2);
+
+        // 平滑移動到目標
+        requestAnimationFrame(() => {
+          reelEl.style.transform = `translateY(-${Math.round(targetY)}px)`;
+          setTimeout(() => resolve(true), 200);
+        });
+      }
+    }, 80);
+  });
+}
+
+
+
+
+export default function SlotMachine({ winners, pool, spinning, onDone }){
+  const [badges, setBadges] = useState([])
+  const reelsRef = useRef([])
+
+  useEffect(()=>{
+    if(!winners || winners.length===0) { setBadges([]); return }
+    reelsRef.current = Array.from({length: winners.length}, (_,i)=>reelsRef.current[i] || null)
+    reelsRef.current.forEach(el => { if(el) feedReel(el, pool) })
+    let aborted = false;
+    async function run(){
+      for(let i=0;i<winners.length;i++){
+        if(!reelsRef.current[i]) continue
+        await spinReel(reelsRef.current[i], winners[i], 1600 + i*250)
+      }
+      if(!aborted){
+        //setBadges(winners.slice())
+        onDone && onDone()
+      }
+    }
+    run()
+    return ()=> { aborted = true }
+  }, [winners])
 
   return (
-    <div className="slot-window">
-      <div ref={trackRef} className="reel">
-        {triple.map((p, idx) => (
-          <div className="cell" key={idx}>
-            <img src={withBase(p.img)} alt={p.name} />
-            <div className="label">{p.name}</div>
+    <>
+      <div className="slots" aria-live="polite" aria-atomic="true">
+        {Array.from({length: winners?.length || 1}).map((_,i)=>(
+          <div className="slot" key={i}>
+            <div className="reel" ref={el => reelsRef.current[i] = el}></div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-/** 主元件：負責抽籤與通知結果 */
-export default function SlotMachine({ participants, count, spinning, onResult }) {
-  const [winnerIdxList, setWinnerIdxList] = useState([]);
-  const [spinKey, setSpinKey] = useState(0);
-  const cellH = 120;
-
-  // 參與者清單：若沒資料，顯示佔位
-  const items = useMemo(
-    () =>
-      (participants && participants.length > 0
-        ? participants
-        : [{ name: "尚無名單", img: "default.png" }]),
-    [participants]
-  );
-
-  useEffect(() => {
-    if (!spinning) return;
-    if (items.length === 0) return;
-
-    // 1) 抽出得獎者
-    const winners = pickN(items, count);
-    const winnerIdx = winners.map((w) => items.findIndex((x) => x === w));
-
-    // 2) 觸發動畫
-    setWinnerIdxList(winnerIdx);
-    setSpinKey((k) => k + 1);
-
-    // 3) 動畫結束後回傳結果（加上 _resolvedImg 給外層 badge 用）
-    const maxMs = 1200 + (count - 1) * 200 + 150; // 最長那捲 + buffer
-    const t = setTimeout(() => {
-      onResult(
-        winners.map((w) => ({
-          ...w,
-          _resolvedImg: withBase(w.img),
-        }))
-      );
-    }, maxMs);
-
-    return () => clearTimeout(t);
-  }, [spinning, count, items, onResult]);
-
-  if (!participants || participants.length === 0) {
-    return <div style={{ padding: 8, color: "#9ca3af" }}>請先在 <code>public/data/participants.json</code> 填入名單</div>;
-  }
-
-  return (
-    <div className="slot-row">
-      {Array.from({ length: count }).map((_, i) => (
-        <Reel
-          key={i}
-          items={items}
-          winnerIndex={winnerIdxList[i] ?? null}
-          spinKey={spinKey}
-          duration={1200 + i * 200}  // 每捲延遲一點，效果更好
-          cellH={cellH}
-        />
-      ))}
-    </div>
-  );
+      <div className="winners-area">
+        {badges.map((p, idx) => (
+          <span className="badge" key={idx}>
+            <img className="badge-avatar" src={withBase(p.img)} alt={p.name} />
+            {p.name}
+          </span>
+        ))}
+      </div>
+    </>
+  )
 }
